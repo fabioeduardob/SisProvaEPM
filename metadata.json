@@ -1,0 +1,6 @@
+{
+  "name": "SisProvaEPM",
+  "description": "Sistema completo para geração de provas, banco de questões e análise de desempenho com perfis de professor e coordenador.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
