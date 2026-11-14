@@ -195,23 +195,32 @@ export function Users() {
       return;
     }
 
+    const isSelf = userToEdit.uid === currentUser?.uid;
+    if (isSelf && editRole !== 'coordinator') {
+      setFeedback({
+        type: 'error',
+        message: 'Por segurança, um coordenador não pode alterar o próprio perfil de acesso para Professor.',
+      });
+      return;
+    }
+
+    const safeRole: UserRole = isSelf ? 'coordinator' : editRole;
+
     setSubmittingEdit(true);
     try {
       await updateDoc(doc(db, 'users', userToEdit.uid), {
         name: trimmedName,
-        role: editRole,
+        role: safeRole,
         updatedAt: new Date().toISOString(),
       });
 
-      if (userToEdit.uid === currentUser?.uid) {
+      if (isSelf) {
         await refreshProfile();
       }
 
       setFeedback({
         type: 'success',
-        message: `Dados e perfil de "${trimmedName}" atualizados para ${
-          editRole === 'coordinator' ? 'Coordenador' : 'Professor'
-        }.`,
+        message: `Dados de "${trimmedName}" atualizados com sucesso.`,
       });
       setUserToEdit(null);
       await fetchUsers();
@@ -227,6 +236,14 @@ export function Users() {
     setFeedback(null);
     if (targetUser.role === nextRole) return;
 
+    if (targetUser.uid === currentUser?.uid) {
+      setFeedback({
+        type: 'error',
+        message: 'Por segurança, você não pode modificar o seu próprio perfil de acesso para Professor.',
+      });
+      return;
+    }
+
     try {
       await updateDoc(doc(db, 'users', targetUser.uid), {
         role: nextRole,
@@ -236,10 +253,6 @@ export function Users() {
       setUsers(prev =>
         prev.map(u => (u.uid === targetUser.uid ? { ...u, role: nextRole } : u))
       );
-
-      if (targetUser.uid === currentUser?.uid) {
-        await refreshProfile();
-      }
 
       setFeedback({
         type: 'success',
@@ -518,17 +531,19 @@ export function Users() {
                             )}
                             {u.role === 'coordinator' ? 'Coordenador' : 'Professor'}
                           </span>
-                          <select
-                            value={u.role}
-                            onChange={e =>
-                              handleQuickRoleChange(u, e.target.value as UserRole)
-                            }
-                            title="Modificar tipo de perfil do usuário"
-                            className="text-xs border border-slate-300 rounded-md px-2 py-1 bg-white text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
-                          >
-                            <option value="teacher">Professor</option>
-                            <option value="coordinator">Coordenador</option>
-                          </select>
+                          {!isSelf && (
+                            <select
+                              value={u.role}
+                              onChange={e =>
+                                handleQuickRoleChange(u, e.target.value as UserRole)
+                              }
+                              title="Modificar tipo de perfil do usuário"
+                              className="text-xs border border-slate-300 rounded-md px-2 py-1 bg-white text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
+                            >
+                              <option value="teacher">Professor</option>
+                              <option value="coordinator">Coordenador</option>
+                            </select>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -709,11 +724,17 @@ export function Users() {
                 <select
                   value={editRole}
                   onChange={e => setEditRole(e.target.value as UserRole)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
+                  disabled={userToEdit.uid === currentUser?.uid}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
                 >
                   <option value="teacher">Professor</option>
                   <option value="coordinator">Coordenador</option>
                 </select>
+                {userToEdit.uid === currentUser?.uid && (
+                  <p className="text-xs text-slate-500 mt-1">
+                    Por segurança, você não pode alterar seu próprio perfil de Coordenador para Professor.
+                  </p>
+                )}
               </div>
               <div className="flex justify-end gap-3 pt-4">
                 <button
